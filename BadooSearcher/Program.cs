@@ -1,5 +1,6 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Firefox;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -52,10 +53,10 @@ namespace BadooSearcher
             }
 
             ChromeOptions options = new ChromeOptions();
-            options.AddArgument("test-type");
+            //options.AddArgument("test-type");
             options.AddArguments("--disable-extensions");
 
-            driver = new ChromeDriver(options);
+            driver = new ChromeDriver();
             GoToUrlWithGetRoundOfCaptcha("https://badoo.com", false);
 
             var vkButton = driver.FindElementsByClassName("auth-button--vk");
@@ -108,14 +109,46 @@ namespace BadooSearcher
                 File.AppendAllText(fileLogName, Environment.NewLine);
                 for (int page = 1; page <= 100; page++)
                 {
-                    GoToUrlWithGetRoundOfCaptcha("https://badoo.com/search?filter=online" + "&page=" + page, false);
-                    //{
-                    //    File.AppendAllText(fileLogName, String.Format("Сброшена {0} страница", page));
-                    //    File.AppendAllText(fileLogName, Environment.NewLine);
-                    //    continue;
-                    //}
+                    GoToUrlWithGetRoundOfCaptcha("https://badoo.com/search");
 
-                    Thread.Sleep(TimeSpan.FromSeconds(5));
+                    Thread.Sleep(TimeSpan.FromSeconds(10));
+
+                    if (page == 1)
+                    {
+                        var dropButton = driver.FindElementByClassName($"btn--round");
+                        dropButton.Click();
+                        Thread.Sleep(TimeSpan.FromSeconds(2));
+                        var onlineButtons = driver.FindElementsByClassName("js-search-filter");
+                        onlineButtons[3].Click();
+                        Thread.Sleep(TimeSpan.FromSeconds(5));
+                    }
+
+                    if (page != 1)
+                    {
+                        var pageButton = driver.FindElementsByLinkText($"{page}");
+                        if (pageButton.Count == 0)
+                        {
+                            for (int j = 2;; j++)
+                            {
+                                if (j > 100)
+                                {
+                                    break;
+                                }
+                                var pageButtonInFor = driver.FindElementsByLinkText($"{j}");
+                                pageButtonInFor.Last().Click();
+                                Thread.Sleep(TimeSpan.FromSeconds(8));
+
+                                pageButton = driver.FindElementsByLinkText($"{page}");
+                                if (pageButton.Count == 0)
+                                    continue;
+                                else
+                                    break;
+                            }
+                        }
+                        pageButton.Last().Click();
+                        //var pageButton1 = driver.FindElementsByLinkText($"/search?filter=online&page={page}"); //pageButton.First().Click();
+                        Thread.Sleep(TimeSpan.FromSeconds(5));
+                    }
 
                     var pageParser = new PageParser(driver);
                     var girlMiniProfiles = pageParser.Parse();
@@ -123,19 +156,29 @@ namespace BadooSearcher
                     var girlsInXml = doc.Element("Girls").Elements().Select(node => new MiniProfile("noname", 0, node.Value));
                     listVisitedMiniProfiles.AddRange(girlsInXml.Except(listVisitedMiniProfiles, new MiniProfileComparer()));
 
-                    var filteredProfiles = girlMiniProfiles.Where(g => g.Age >= 25 && g.Age <= 27).ToList();
+                    var filteredProfiles = girlMiniProfiles.Where(g => g.Age >= 26 && g.Age <= 28).ToList();
                     var profilesWithoutPrevious = filteredProfiles.Except(listVisitedMiniProfiles, new MiniProfileComparer()).ToList();
 
                     foreach (var girlMiniProfile in profilesWithoutPrevious)
                     {
+                        //driver.ExecuteScript($"window.open('{girlMiniProfile.Link}','_blank');");
                         GoToUrlWithGetRoundOfCaptcha(girlMiniProfile.Link);
+
+                        //driver.FindElement(By.CssSelector("body")).SendKeys(OpenQA.Selenium.Keys.Control + "t");
+                        //driver.SwitchTo().Window(driver.WindowHandles.Last());
+                        //driver.Navigate().GoToUrl(girlMiniProfile.Link);
 
                         Thread.Sleep(TimeSpan.FromSeconds(beforeSeconds));
 
-                        CreateScreenShot(
-                            cycle: cycle,
-                            page: page,
-                            link: girlMiniProfile.Link);
+                        //if (driver.WindowHandles.Count > 1)
+                        //{
+                        //    driver.SwitchTo().Window(driver.WindowHandles[1]);
+                        //    driver.SwitchTo().DefaultContent();
+                        //}
+                        //CreateScreenShot(
+                        //    cycle: cycle,
+                        //    page: page,
+                        //    link: girlMiniProfile.Link);
 
                         string appereance = "";
                         string smoking = "";
@@ -144,7 +187,7 @@ namespace BadooSearcher
                         string living = "";
 
                         bool superGirl = HtmlPageHasWord("Супер девушка");
-                        bool talking = HtmlPageHasWord("Поболтать");
+                        bool talking = HtmlPageHasWord("Пообщаться");
 
                         bool pageLoaded = HtmlPageHasWord("Местоположение");
 
@@ -211,12 +254,21 @@ namespace BadooSearcher
                             }
                         }
 
+                        if (driver.WindowHandles.Count > 1)
+                        {
+                            //driver.SwitchTo().Window(driver.WindowHandles[1]).Close();
+                            //Thread.Sleep(TimeSpan.FromSeconds(2));
+                            //driver.SwitchTo().Window(driver.WindowHandles[0]);
+                        }
+
                         Thread.Sleep(TimeSpan.FromSeconds(afterSeconds));
                     }
                     listVisitedMiniProfiles.AddRange(filteredProfiles);
                     File.AppendAllText(fileLogName, String.Format("{0} страница проанализирована ", page));
                     File.AppendAllText(fileLogName, Environment.NewLine);
                     //Thread.Sleep(TimeSpan.FromMinutes(25));
+
+                    
                 }
             }
 

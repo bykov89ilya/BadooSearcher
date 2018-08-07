@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Firefox;
 
 namespace BadooSearcher
 {
@@ -23,7 +24,7 @@ namespace BadooSearcher
             var hrefElements = _driver.FindElementsByClassName("js-folders-user-profile-link");
             foreach (var hrefElement in hrefElements)
             {
-                var ageAndNameElement = hrefElement.FindElement(By.XPath("following-sibling::*[1]/div[1]/div[1]"));
+                var ageAndNameElement = hrefElement.FindElement(By.XPath("following-sibling::*[1]/div[2]/div[1]/div[1]"));
                 var fullLink = hrefElement.GetAttribute("href");
                 listMiniProfiles.Add(new MiniProfile(
                     name: ageAndNameElement.Text.Substring(0, ageAndNameElement.Text.IndexOf(",")),
